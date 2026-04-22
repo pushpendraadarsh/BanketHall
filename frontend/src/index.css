@@ -1,0 +1,16 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    font-family: system-ui, sans-serif;
+  }
+}
+
+@layer components {
+  .glossy-card {
+    @apply bg-white/80 backdrop-blur-xl shadow-glossy border border-white/50 rounded-2xl p-8;
+  }
+}
+
