@@ -1,10 +1,12 @@
-import express from 'express';
-import { getHalls, createHall } from '../controllers/hallController.js';
+import express from "express";
+import { getHalls, createHall } from "../controllers/hallController.js";
 
 const router = express.Router();
 
-router.get('/', getHalls);
-router.post('/', createHall);
+// GET all halls
+router.get("/", getHalls);
+
+// CREATE hall (admin)
+router.post("/", createHall);
 
 export default router;
-

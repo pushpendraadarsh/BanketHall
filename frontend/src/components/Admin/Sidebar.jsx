@@ -1,161 +1,93 @@
-// components/Admin/Sidebar.jsx
-import React from 'react';
-import {
-  Drawer, List, ListItem, ListItemIcon, ListItemText,
-  Toolbar, Typography, Divider, Avatar, Box,
-  ListItemButton, useTheme
-} from '@mui/material';
-import {
-  Dashboard, EventNote, MeetingRoom, People,
-  ExitToApp, Assessment, Settings
-} from '@mui/icons-material';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
+import Drawer from "@mui/material/Drawer";
+import Toolbar from "@mui/material/Toolbar";
+import Box from "@mui/material/Box";
+import Avatar from "@mui/material/Avatar";
+import Typography from "@mui/material/Typography";
+import List from "@mui/material/List";
+import ListItemButton from "@mui/material/ListItemButton";
+import ListItemIcon from "@mui/material/ListItemIcon";
+import ListItemText from "@mui/material/ListItemText";
+
+import DashboardIcon from "@mui/icons-material/Dashboard";
+import PeopleIcon from "@mui/icons-material/People";
+import BookIcon from "@mui/icons-material/Book";
+import MeetingRoomIcon from "@mui/icons-material/MeetingRoom";
+
+import { NavLink } from "react-router-dom";
 
 const drawerWidth = 260;
+const collapsedWidth = 80;
 
-const Sidebar = () => {
-  const navigate = useNavigate();
-  const location = useLocation();
-  const { user, logout } = useAuth();
-  const theme = useTheme();
-
+const Sidebar = ({ collapsed }) => {
   const menuItems = [
-    { text: 'Dashboard', icon: <Dashboard />, path: '/admin/dashboard' },
-    { text: 'Bookings', icon: <EventNote />, path: '/admin/bookings' },
-    { text: 'Halls', icon: <MeetingRoom />, path: '/admin/halls' },
-    { text: 'Users', icon: <People />, path: '/admin/users' },
-    { text: 'Reports', icon: <Assessment />, path: '/admin/reports' },
-    { text: 'Settings', icon: <Settings />, path: '/admin/settings' },
+    { text: "Dashboard", icon: <DashboardIcon />, path: "/admin" },
+    { text: "Users", icon: <PeopleIcon />, path: "/admin/users" },
+    { text: "Bookings", icon: <BookIcon />, path: "/admin/bookings" },
+    { text: "Halls", icon: <MeetingRoomIcon />, path: "/admin/halls" },
+    { text: "Blog", icon: <MeetingRoomIcon />, path: "/admin/blogs" },
   ];
-
-  const handleLogout = async () => {
-    await logout();
-    navigate('/login');
-  };
 
   return (
     <Drawer
       variant="permanent"
-      anchor="left"
       sx={{
-        width: drawerWidth,
+        width: collapsed ? collapsedWidth : drawerWidth,
         flexShrink: 0,
-        '& .MuiDrawer-paper': {
-          width: drawerWidth,
-          boxSizing: 'border-box',
-          bgcolor: '#1a1a1a',
-          color: '#ffffff',
-          borderRight: 'none',
-          position: 'fixed',
-          height: '100vh',
-          top: 0,
-          left: 0,
-          overflowX: 'hidden'
+        "& .MuiDrawer-paper": {
+          width: collapsed ? collapsedWidth : drawerWidth,
+          transition: "width 0.3s ease",
+          overflowX: "hidden",
+          bgcolor: "#111827",
+          color: "#fff",
+          boxSizing: "border-box",
         },
       }}
     >
-      <Toolbar sx={{ justifyContent: 'center', py: 2, minHeight: 'auto !important' }}>
-        <Typography variant="h6" fontWeight="bold" sx={{ 
-          background: 'linear-gradient(45deg, #FE6B8B 30%, #FF8E53 90%)',
-          WebkitBackgroundClip: 'text',
-          WebkitTextFillColor: 'transparent',
-          fontSize: '1.25rem'
-        }}>
-          Banquet Admin
-        </Typography>
-      </Toolbar>
-      
-      <Divider sx={{ bgcolor: 'rgba(255,255,255,0.12)' }} />
-      
-      <Box sx={{ p: 3, textAlign: 'center' }}>
-        <Avatar 
-          sx={{ 
-            width: 80, 
-            height: 80, 
-            mx: 'auto', 
-            mb: 2,
-            bgcolor: '#1976d2',
-            fontSize: 32,
-            fontWeight: 'bold'
-          }}
-        >
-          {user?.name?.charAt(0)?.toUpperCase() || 'A'}
-        </Avatar>
-        <Typography variant="subtitle1" fontWeight="bold" noWrap>
-          {user?.name || 'Admin User'}
-        </Typography>
-        <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.7)', display: 'block' }}>
-          {user?.email || 'admin@banquet.com'}
-        </Typography>
+      <Toolbar />
+
+      {/* PROFILE */}
+      <Box sx={{ textAlign: "center", p: 2 }}>
+        <Avatar sx={{ mx: "auto", mb: 1 }}>A</Avatar>
+
+        {!collapsed && (
+          <Typography variant="body2">Admin</Typography>
+        )}
       </Box>
-      
-      <Divider sx={{ bgcolor: 'rgba(255,255,255,0.12)' }} />
-      
-      <List sx={{ mt: 2, flex: 1 }}>
+
+      {/* MENU */}
+      <List>
         {menuItems.map((item) => (
-          <ListItem key={item.text} disablePadding>
-            <ListItemButton
-              onClick={() => navigate(item.path)}
-              sx={{
-                mx: 1,
-                borderRadius: 2,
-                mb: 0.5,
-                bgcolor: location.pathname === item.path ? 'rgba(25, 118, 210, 0.2)' : 'transparent',
-                '&:hover': {
-                  bgcolor: 'rgba(255,255,255,0.1)'
-                }
-              }}
-            >
-              <ListItemIcon sx={{ 
-                color: location.pathname === item.path ? '#1976d2' : 'rgba(255,255,255,0.7)',
-                minWidth: 40
-              }}>
-                {item.icon}
-              </ListItemIcon>
-              <ListItemText 
-                primary={item.text} 
-                sx={{ 
-                  '& .MuiTypography-root': {
-                    fontWeight: location.pathname === item.path ? 600 : 400,
-                    color: location.pathname === item.path ? '#1976d2' : 'rgba(255,255,255,0.9)',
-                    fontSize: '0.9rem'
-                  }
-                }}
-              />
-            </ListItemButton>
-          </ListItem>
-        ))}
-      </List>
-      
-      <Divider sx={{ bgcolor: 'rgba(255,255,255,0.12)' }} />
-      
-      <List sx={{ mb: 2 }}>
-        <ListItem disablePadding>
-          <ListItemButton 
-            onClick={handleLogout} 
-            sx={{ 
-              mx: 1, 
-              borderRadius: 2, 
-              mb: 1,
-              '&:hover': {
-                bgcolor: 'rgba(244, 67, 54, 0.1)'
-              }
+          <ListItemButton
+            key={item.text}
+            component={NavLink}
+            to={item.path}
+            end={item.path === "/admin"}
+            sx={{
+              color: "#fff",
+              minHeight: 48,
+              justifyContent: collapsed ? "center" : "flex-start",
+              px: collapsed ? 0 : 2.5,
+
+              "&.active": {
+                bgcolor: "#1f2937",
+                borderLeft: "4px solid #3b82f6",
+              },
             }}
           >
-            <ListItemIcon sx={{ color: 'rgba(255,255,255,0.7)', minWidth: 40 }}>
-              <ExitToApp />
-            </ListItemIcon>
-            <ListItemText 
-              primary="Logout" 
+            <ListItemIcon
               sx={{
-                '& .MuiTypography-root': {
-                  color: 'rgba(255,255,255,0.9)'
-                }
+                color: "#fff",
+                minWidth: 0,
+                mr: collapsed ? 0 : 2,
+                justifyContent: "center",
               }}
-            />
+            >
+              {item.icon}
+            </ListItemIcon>
+
+            {!collapsed && <ListItemText primary={item.text} />}
           </ListItemButton>
-        </ListItem>
+        ))}
       </List>
     </Drawer>
   );

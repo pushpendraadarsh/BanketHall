@@ -1,24 +1,60 @@
-// components/Admin/HallsManagement.jsx
 import React, { useState, useEffect } from 'react';
 import {
   Box, Typography, Paper, Grid, Card, CardContent, CardMedia,
   IconButton, Button, Dialog, DialogTitle, DialogContent,
-  DialogActions, TextField, Chip, Stack, Alert, Fab,
-  FormControlLabel, Switch, Rating, Tooltip
+  DialogActions, TextField, Chip, Stack, Alert,
+  FormControlLabel, Switch, Tooltip
 } from '@mui/material';
+
 import {
-  Add, Edit, Delete, Close, Image, LocationOn,
-  People, AttachMoney, Wifi, LocalParking, AcUnit,
-  Restaurant, Speaker, Refresh
+  Add, Edit, Delete, People, AttachMoney,
+  Wifi, LocalParking, AcUnit, Restaurant, Speaker
 } from '@mui/icons-material';
-import { useBooking } from '../../context/BookingContext';
+
 import Sidebar from './Sidebar';
-import LoadingSpinner from '../Common/LoadingSpinner';
+
+// ✅ DUMMY DATA (IMPORTANT FIX)
+const dummyHalls = [
+  {
+    _id: "h1",
+    name: "Royal Banquet Hall",
+    capacity: 300,
+    pricePerHour: 5000,
+    description: "Luxury hall perfect for weddings and events.",
+    amenities: ["AC", "WiFi", "Parking"],
+    images: [],
+    isAvailable: true,
+    featured: true
+  },
+  {
+    _id: "h2",
+    name: "Grand Palace Hall",
+    capacity: 500,
+    pricePerHour: 8000,
+    description: "Premium hall with modern facilities.",
+    amenities: ["AC", "WiFi", "Catering"],
+    images: [],
+    isAvailable: false,
+    featured: false
+  }
+];
+
+const amenityOptions = [
+  { value: 'AC', label: 'Air Conditioning', icon: <AcUnit /> },
+  { value: 'WiFi', label: 'WiFi', icon: <Wifi /> },
+  { value: 'Parking', label: 'Parking', icon: <LocalParking /> },
+  { value: 'Catering', label: 'Catering', icon: <Restaurant /> },
+  { value: 'Sound System', label: 'Sound System', icon: <Speaker /> }
+];
 
 const HallsManagement = () => {
-  const { halls, fetchHalls, createHall, updateHall, deleteHall, loading, error } = useBooking();
+
+  // ✅ use dummy instead of backend
+  const [halls, setHalls] = useState(dummyHalls);
+
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingHall, setEditingHall] = useState(null);
+
   const [formData, setFormData] = useState({
     name: '',
     capacity: '',
@@ -29,35 +65,18 @@ const HallsManagement = () => {
     isAvailable: true,
     featured: false
   });
+
   const [selectedAmenities, setSelectedAmenities] = useState([]);
 
-  const amenityOptions = [
-    { value: 'AC', label: 'Air Conditioning', icon: <AcUnit /> },
-    { value: 'WiFi', label: 'WiFi', icon: <Wifi /> },
-    { value: 'Parking', label: 'Parking', icon: <LocalParking /> },
-    { value: 'Catering', label: 'Catering', icon: <Restaurant /> },
-    { value: 'Sound System', label: 'Sound System', icon: <Speaker /> },
-    { value: 'Projector', label: 'Projector', icon: <Speaker /> }
-  ];
-
   useEffect(() => {
-    fetchHalls();
+    setHalls(dummyHalls);
   }, []);
 
   const handleOpenDialog = (hall = null) => {
     if (hall) {
       setEditingHall(hall);
-      setFormData({
-        name: hall.name,
-        capacity: hall.capacity,
-        pricePerHour: hall.pricePerHour,
-        description: hall.description,
-        amenities: hall.amenities || [],
-        images: hall.images || [],
-        isAvailable: hall.isAvailable,
-        featured: hall.featured
-      });
-      setSelectedAmenities(hall.amenities || []);
+      setFormData(hall);
+      setSelectedAmenities(hall.amenities);
     } else {
       setEditingHall(null);
       setFormData({
@@ -75,258 +94,178 @@ const HallsManagement = () => {
     setDialogOpen(true);
   };
 
-  const handleSubmit = async () => {
-    const hallData = {
+  const toggleAmenity = (value) => {
+    setSelectedAmenities((prev) =>
+      prev.includes(value)
+        ? prev.filter((a) => a !== value)
+        : [...prev, value]
+    );
+  };
+
+  const handleSave = () => {
+    const newHall = {
       ...formData,
+      _id: Date.now().toString(),
       capacity: Number(formData.capacity),
       pricePerHour: Number(formData.pricePerHour),
       amenities: selectedAmenities
     };
 
-    let result;
     if (editingHall) {
-      result = await updateHall(editingHall._id, hallData);
+      setHalls(halls.map(h => h._id === editingHall._id ? newHall : h));
     } else {
-      result = await createHall(hallData);
+      setHalls([...halls, newHall]);
     }
 
-    if (result.success) {
-      setDialogOpen(false);
-      await fetchHalls();
-    }
+    setDialogOpen(false);
   };
 
-  const handleDelete = async (hallId) => {
-    if (window.confirm('Are you sure you want to delete this hall? This action cannot be undone.')) {
-      const result = await deleteHall(hallId);
-      if (result.success) {
-        await fetchHalls();
-      }
-    }
-  };
-
-  const toggleAmenity = (amenity) => {
-    if (selectedAmenities.includes(amenity)) {
-      setSelectedAmenities(selectedAmenities.filter(a => a !== amenity));
-    } else {
-      setSelectedAmenities([...selectedAmenities, amenity]);
-    }
+  const handleDelete = (id) => {
+    setHalls(halls.filter(h => h._id !== id));
   };
 
   return (
     <Box display="flex">
+
       <Sidebar />
+
       <Box component="main" sx={{ flexGrow: 1, p: 3 }}>
-        <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-          <Typography variant="h4" gutterBottom>Manage Halls</Typography>
+
+        <Box display="flex" justifyContent="space-between" mb={3}>
+          <Typography variant="h4">Halls Management (Demo)</Typography>
+
           <Button
             variant="contained"
             startIcon={<Add />}
             onClick={() => handleOpenDialog()}
           >
-            Add New Hall
+            Add Hall
           </Button>
         </Box>
 
-        {error && (
-          <Alert severity="error" sx={{ mb: 2 }} onClose={() => {}}>
-            {error}
-          </Alert>
+        {halls.length === 0 && (
+          <Alert severity="info">No halls found</Alert>
         )}
 
-        {loading ? (
-          <LoadingSpinner />
-        ) : (
-          <Grid container spacing={3}>
-            {halls.map((hall) => (
-              <Grid item xs={12} md={6} lg={4} key={hall._id}>
-                <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-                  <CardMedia
-                    component="img"
-                    height="200"
-                    image={hall.images?.[0] || 'https://via.placeholder.com/400x200?text=No+Image'}
-                    alt={hall.name}
-                  />
-                  <CardContent sx={{ flexGrow: 1 }}>
-                    <Box display="flex" justifyContent="space-between" alignItems="start">
-                      <Typography variant="h6" gutterBottom>
-                        {hall.name}
-                      </Typography>
-                      <Box>
-                        <Tooltip title="Edit">
-                          <IconButton onClick={() => handleOpenDialog(hall)} size="small">
-                            <Edit />
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title="Delete">
-                          <IconButton onClick={() => handleDelete(hall._id)} color="error" size="small">
-                            <Delete />
-                          </IconButton>
-                        </Tooltip>
-                      </Box>
-                    </Box>
-                    
-                    <Stack direction="row" spacing={2} mb={2}>
-                      <Chip
-                        icon={<People />}
-                        label={`${hall.capacity} people`}
-                        size="small"
-                      />
-                      <Chip
-                        icon={<AttachMoney />}
-                        label={`₹${hall.pricePerHour}/hour`}
-                        size="small"
-                        color="primary"
-                      />
-                      <Chip
-                        label={hall.isAvailable ? 'Available' : 'Not Available'}
-                        size="small"
-                        color={hall.isAvailable ? 'success' : 'error'}
-                      />
-                    </Stack>
-                    
-                    <Typography variant="body2" color="textSecondary" paragraph>
-                      {hall.description.substring(0, 100)}...
-                    </Typography>
-                    
-                    <Box mt={2}>
-                      <Typography variant="subtitle2" gutterBottom>
-                        Amenities:
-                      </Typography>
-                      <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                        {hall.amenities?.map((amenity) => (
-                          <Chip
-                            key={amenity}
-                            label={amenity}
-                            size="small"
-                            variant="outlined"
-                          />
-                        ))}
-                      </Stack>
-                    </Box>
-                  </CardContent>
-                </Card>
-              </Grid>
-            ))}
-          </Grid>
-        )}
+        <Grid container spacing={3}>
+          {halls.map((hall) => (
+            <Grid item xs={12} md={6} lg={4} key={hall._id}>
 
-        {/* Hall Form Dialog */}
-        <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="md" fullWidth>
-          <DialogTitle>
-            {editingHall ? 'Edit Hall' : 'Add New Hall'}
-          </DialogTitle>
-          <DialogContent>
-            <Grid container spacing={2} sx={{ mt: 1 }}>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Hall Name"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  required
+              <Card>
+
+                <CardMedia
+                  component="img"
+                  height="160"
+                  image="https://via.placeholder.com/400x200"
                 />
-              </Grid>
-              
-              <Grid item xs={6}>
-                <TextField
-                  fullWidth
-                  type="number"
-                  label="Capacity (people)"
-                  value={formData.capacity}
-                  onChange={(e) => setFormData({ ...formData, capacity: e.target.value })}
-                  required
-                />
-              </Grid>
-              
-              <Grid item xs={6}>
-                <TextField
-                  fullWidth
-                  type="number"
-                  label="Price per Hour (₹)"
-                  value={formData.pricePerHour}
-                  onChange={(e) => setFormData({ ...formData, pricePerHour: e.target.value })}
-                  required
-                />
-              </Grid>
-              
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  multiline
-                  rows={3}
-                  label="Description"
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  required
-                />
-              </Grid>
-              
-              <Grid item xs={12}>
-                <Typography variant="subtitle2" gutterBottom>
-                  Amenities
-                </Typography>
-                <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                  {amenityOptions.map((amenity) => (
-                    <Chip
-                      key={amenity.value}
-                      icon={amenity.icon}
-                      label={amenity.label}
-                      onClick={() => toggleAmenity(amenity.value)}
-                      color={selectedAmenities.includes(amenity.value) ? 'primary' : 'default'}
-                      variant={selectedAmenities.includes(amenity.value) ? 'filled' : 'outlined'}
-                      clickable
-                    />
-                  ))}
-                </Stack>
-              </Grid>
-              
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Image URLs (comma separated)"
-                  placeholder="https://example.com/image1.jpg, https://example.com/image2.jpg"
-                  value={formData.images.join(', ')}
-                  onChange={(e) => setFormData({ 
-                    ...formData, 
-                    images: e.target.value.split(',').map(url => url.trim()).filter(url => url)
-                  })}
-                  helperText="Enter image URLs separated by commas"
-                />
-              </Grid>
-              
-              <Grid item xs={6}>
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={formData.isAvailable}
-                      onChange={(e) => setFormData({ ...formData, isAvailable: e.target.checked })}
-                    />
-                  }
-                  label="Available for booking"
-                />
-              </Grid>
-              
-              <Grid item xs={6}>
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={formData.featured}
-                      onChange={(e) => setFormData({ ...formData, featured: e.target.checked })}
-                    />
-                  }
-                  label="Featured Hall"
-                />
-              </Grid>
+
+                <CardContent>
+
+                  <Typography variant="h6">
+                    {hall.name}
+                  </Typography>
+
+                  <Stack direction="row" spacing={1} mt={1}>
+                    <Chip icon={<People />} label={hall.capacity} />
+                    <Chip icon={<AttachMoney />} label={`₹${hall.pricePerHour}`} />
+                  </Stack>
+
+                  <Typography variant="body2" mt={1}>
+                    {hall.description}
+                  </Typography>
+
+                  <Stack direction="row" spacing={1} mt={1}>
+                    <IconButton onClick={() => handleOpenDialog(hall)}>
+                      <Edit />
+                    </IconButton>
+
+                    <IconButton
+                      color="error"
+                      onClick={() => handleDelete(hall._id)}
+                    >
+                      <Delete />
+                    </IconButton>
+                  </Stack>
+
+                </CardContent>
+
+              </Card>
+
             </Grid>
+          ))}
+        </Grid>
+
+        {/* Dialog */}
+        <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} fullWidth>
+
+          <DialogTitle>
+            {editingHall ? "Edit Hall" : "Add Hall"}
+          </DialogTitle>
+
+          <DialogContent>
+
+            <TextField
+              fullWidth
+              label="Name"
+              margin="dense"
+              value={formData.name}
+              onChange={(e) =>
+                setFormData({ ...formData, name: e.target.value })
+              }
+            />
+
+            <TextField
+              fullWidth
+              label="Capacity"
+              margin="dense"
+              value={formData.capacity}
+              onChange={(e) =>
+                setFormData({ ...formData, capacity: e.target.value })
+              }
+            />
+
+            <TextField
+              fullWidth
+              label="Price"
+              margin="dense"
+              value={formData.pricePerHour}
+              onChange={(e) =>
+                setFormData({ ...formData, pricePerHour: e.target.value })
+              }
+            />
+
+            <Typography mt={2}>Amenities</Typography>
+
+            <Stack direction="row" spacing={1} flexWrap="wrap">
+
+              {amenityOptions.map((a) => (
+                <Chip
+                  key={a.value}
+                  label={a.label}
+                  icon={a.icon}
+                  clickable
+                  color={
+                    selectedAmenities.includes(a.value)
+                      ? "primary"
+                      : "default"
+                  }
+                  onClick={() => toggleAmenity(a.value)}
+                />
+              ))}
+
+            </Stack>
+
           </DialogContent>
+
           <DialogActions>
             <Button onClick={() => setDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleSubmit} variant="contained" color="primary">
-              {editingHall ? 'Update' : 'Create'}
+            <Button variant="contained" onClick={handleSave}>
+              Save
             </Button>
           </DialogActions>
+
         </Dialog>
+
       </Box>
     </Box>
   );

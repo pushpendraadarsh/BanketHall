@@ -46,7 +46,7 @@ const ContactSection = ({
   };
 
   return (
-    <section className="py-20 bg-[#F3F4EC]">
+    <section className="py-20 px-20 bg-[#F3F4EC]">
       <div className="container mx-auto px-4">
 
         {/* Heading */}

@@ -27,7 +27,7 @@ const AdminLogin = () => {
       
       // Check if result exists
       if (result && result.success) {
-        navigate('/admin/dashboard');
+        navigate('/admin');
       } else {
         // Use result.message if available, otherwise default error
         setError(result?.message || 'Login failed. Please try again.');

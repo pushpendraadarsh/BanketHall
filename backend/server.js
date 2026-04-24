@@ -5,6 +5,7 @@ import dotenv from 'dotenv';
 import authRoutes from './routes/auth.js';
 import hallRoutes from './routes/halls.js';
 import bookingRoutes from './routes/bookings.js';
+import enquiryRoutes from './routes/enquiry.js';
 
 dotenv.config();
 
@@ -28,7 +29,7 @@ app.get('/', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/halls', hallRoutes);
 app.use('/api/bookings', bookingRoutes);
-
+app.use('/api/enquiry', enquiryRoutes);
 // Admin Stats Endpoint (Simple version)
 app.get('/api/admin/stats', async (req, res) => {
   try {
