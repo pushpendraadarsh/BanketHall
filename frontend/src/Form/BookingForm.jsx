@@ -8,6 +8,7 @@ const BookingForm = ({ hallId }) => {
     guests: "",
     eventType: "",
     paymentMethod: "online",
+    specialRequests: "",
   });
 
   const [loading, setLoading] = useState(false);
@@ -17,73 +18,78 @@ const BookingForm = ({ hallId }) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  setLoading(true);
 
-    console.log("Form submitted:", form);
-    console.log("hallId:", hallId); // ✅ DEBUG
-
-    setLoading(true);
-    setStatus("");
-
+  try {
     const token = localStorage.getItem("token");
 
-    if (!token) {
-      setStatus("Please login first");
-      setLoading(false);
-      return;
-    }
+    // STEP 1: CREATE ORDER FROM BACKEND
+    const orderRes = await fetch("http://localhost:5000/api/payment/create-order", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        amount: 1000, // you can calculate dynamically
+      }),
+    });
 
-    if (!hallId) {
-      setStatus("Hall ID missing (check parent component)");
-      setLoading(false);
-      return;
-    }
+    const order = await orderRes.json();
 
-    try {
-      const res = await fetch("http://localhost:5000/api/bookings", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          hallId,                 // ✅ FIXED
-          date: form.date,
-          startTime: form.startTime,
-          endTime: form.endTime,
-          guests: form.guests,
-          eventType: form.eventType,
-          paymentMethod: form.paymentMethod,
-        }),
-      });
+    // STEP 2: OPEN RAZORPAY
+    const options = {
+      key: "YOUR_RAZORPAY_KEY_ID",
+      amount: order.amount,
+      currency: "INR",
+      name: "Hall Booking",
+      order_id: order.id,
 
-      const data = await res.json();
+      handler: async function (response) {
+        // STEP 3: PAYMENT SUCCESS → NOW SAVE BOOKING
 
-      console.log("Response:", data);
-
-      if (res.ok) {
-        setStatus("Booking successful 🎉");
-
-        // reset form
-        setForm({
-          date: "",
-          startTime: "",
-          endTime: "",
-          guests: "",
-          eventType: "",
-          paymentMethod: "online",
+        const bookingRes = await fetch("http://localhost:5000/api/bookings", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            hallId,
+            date: form.date,
+            startTime: form.startTime,
+            endTime: form.endTime,
+            guests: Number(form.guests),
+            eventType: form.eventType,
+            paymentMethod: "online",
+            paymentStatus: "paid", // 🔥 IMPORTANT
+            specialRequests: form.specialRequests,
+          }),
         });
-      } else {
-        setStatus(data.msg || "Booking failed");
-      }
-    } catch (err) {
-      console.log(err);
-      setStatus("Server error");
-    } finally {
-      setLoading(false);
-    }
-  };
+
+        const data = await bookingRes.json();
+
+        setStatus("Payment + Booking Successful 🎉");
+        console.log(data);
+      },
+
+      theme: {
+        color: "#3399cc",
+      },
+    };
+
+    const razor = new window.Razorpay(options);
+    razor.open();
+
+  } catch (err) {
+    console.log(err);
+    setStatus("Payment failed");
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <div className="max-w-2xl mx-auto bg-white p-6 rounded-xl shadow">
@@ -144,6 +150,15 @@ const BookingForm = ({ hallId }) => {
           <option value="Birthday">Birthday</option>
           <option value="Corporate">Corporate</option>
         </select>
+
+        {/* 🔥 NEW FIELD ADDED */}
+        <textarea
+          name="specialRequests"
+          placeholder="Special Requests"
+          value={form.specialRequests}
+          onChange={handleChange}
+          className="input"
+        />
 
         <div className="border p-4 rounded-lg">
           <label>

@@ -1,6 +1,6 @@
 import Hall from "../models/Hall.js";
 
-// GET all available halls
+// GET HALLS
 export const getHalls = async (req, res) => {
   try {
     const halls = await Hall.find({ isAvailable: true });
@@ -10,34 +10,22 @@ export const getHalls = async (req, res) => {
   }
 };
 
-// CREATE hall
+// CREATE HALL (FIXED)
 export const createHall = async (req, res) => {
   try {
-    const {
-      name,
-      capacity,
-      pricePerHour,
-      amenities,
-      images,
-      description,
-    } = req.body;
-
     const hall = new Hall({
-      name,
-      capacity,
-      pricePerHour,
-      amenities,
-      images,
-      description,
+      name: req.body.name,
+      capacity: req.body.capacity,
+      pricePerHour: req.body.pricePerHour,
+      description: req.body.description,
+      images: req.file ? [req.file.filename] : [], // 🔥 IMPORTANT
     });
 
     await hall.save();
+    res.json(hall);
 
-    res.status(201).json({
-      msg: "Hall created successfully",
-      data: hall,
-    });
   } catch (err) {
-    res.status(500).json({ msg: "Server error" });
+    console.log(err);
+    res.status(500).json({ error: "Failed to create hall" });
   }
 };

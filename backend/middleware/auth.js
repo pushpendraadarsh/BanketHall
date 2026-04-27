@@ -7,15 +7,19 @@ const auth = (req, res, next) => {
     return res.status(401).json({ msg: "No token, authorization denied" });
   }
 
-  try {
-    const token = authHeader.split(" ")[1];
+  const token = authHeader.split(" ")[1];
 
+  try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    req.user = decoded.userId; // or decoded.id depending on your JWT
+    req.user = {
+      userId: decoded.userId,
+      role: decoded.role,
+    };
+
     next();
   } catch (err) {
-    res.status(401).json({ msg: "Token is not valid" });
+    return res.status(401).json({ msg: "Token is not valid" });
   }
 };
 

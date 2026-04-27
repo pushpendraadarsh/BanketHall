@@ -1,16 +1,20 @@
 import express from "express";
 import auth from "../middleware/auth.js";
+import { adminOnly } from "../middleware/adminOnly.js";
 import {
   createBooking,
   getBookings,
+  updateBookingStatus,
 } from "../controllers/bookingController.js";
 
 const router = express.Router();
 
-// protected route
+// user creates booking
 router.post("/", auth, createBooking);
 
-// admin or user view
-router.get("/", auth, getBookings);
+// admin/superadmin only
+router.get("/", auth, adminOnly, getBookings);
+
+router.put("/:id/status", auth, adminOnly, updateBookingStatus);
 
 export default router;

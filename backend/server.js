@@ -6,6 +6,8 @@ import authRoutes from './routes/auth.js';
 import hallRoutes from './routes/halls.js';
 import bookingRoutes from './routes/bookings.js';
 import enquiryRoutes from './routes/enquiry.js';
+import userRoutes from "./routes/userRoutes.js";
+import paymentRoutes from "./routes/paymentRoutes.js";
 
 dotenv.config();
 
@@ -25,11 +27,14 @@ app.get('/', (req, res) => {
   res.json({ message: 'Banquet Hall Backend API' });
 });
 
+app.use("/uploads", express.static("uploads"));
 // Routes
 app.use('/api/auth', authRoutes);
+app.use("/api/payment", paymentRoutes);
 app.use('/api/halls', hallRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/enquiry', enquiryRoutes);
+app.use("/api/users", userRoutes);
 // Admin Stats Endpoint (Simple version)
 app.get('/api/admin/stats', async (req, res) => {
   try {

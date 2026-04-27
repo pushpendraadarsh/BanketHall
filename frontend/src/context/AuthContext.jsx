@@ -7,94 +7,42 @@ export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [admin, setAdmin] = useState(null);
-  const [loading, setLoading] = useState(true);
 
-  // ======================
-  // LOAD FROM LOCALSTORAGE
-  // ======================
   useEffect(() => {
-    const userData = localStorage.getItem("user");
-    const adminToken = localStorage.getItem("adminToken");
-    const adminRole = localStorage.getItem("adminRole");
+    const storedUser = localStorage.getItem("user");
 
-    if (userData) {
-      setUser(JSON.parse(userData));
+    if (storedUser) {
+      setUser(JSON.parse(storedUser));
     }
-
-    if (adminToken && adminRole) {
-      setAdmin({ token: adminToken, role: adminRole });
-    }
-
-    setLoading(false);
   }, []);
 
-  // ======================
-  // USER LOGIN (CUSTOMER)
-  // ======================
-  const userLogin = async (data) => {
-    setUser(data);
-    localStorage.setItem("user", JSON.stringify(data));
-  };
-
-  // ======================
-  // ADMIN LOGIN (API CALL)
-  // ======================
-  const adminLogin = async (email, password) => {
-    try {
-      const response = await axios.post(
-        "http://localhost:5000/api/auth/login",
-        { email, password }
-      );
-
-      const token = response.data.token;
-      const role = response.data.role;
-
-      localStorage.setItem("adminToken", token);
-      localStorage.setItem("adminRole", role);
-
-      setAdmin({ token, role });
-
-      return { success: true };
-    } catch (err) {
-      return {
-        success: false,
-        message: err.response?.data?.msg || "Login failed",
-      };
-    }
-  };
-
-  // ======================
-  // 🔥 FIX: COMMON LOGIN FUNCTION (IMPORTANT)
-  // ======================
+  // LOGIN
   const login = async (email, password) => {
-    return await adminLogin(email, password);
+    const res = await axios.post("http://localhost:5000/api/auth/login", {
+      email,
+      password,
+    });
+
+    const { token, user } = res.data;
+
+    // 🔥 IMPORTANT: SINGLE TOKEN KEY
+    localStorage.setItem("token", token);
+    localStorage.setItem("user", JSON.stringify(user));
+
+    setUser(user);
+
+    return res.data;
   };
 
-  // ======================
-  // LOGOUT (BOTH USER + ADMIN)
-  // ======================
+  // LOGOUT
   const logout = () => {
-    setUser(null);
-    setAdmin(null);
-
+    localStorage.removeItem("token");
     localStorage.removeItem("user");
-    localStorage.removeItem("adminToken");
-    localStorage.removeItem("adminRole");
+    setUser(null);
   };
 
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        admin,
-        userLogin,
-        adminLogin,
-        login, // ✅ FIX ADDED HERE
-        logout,
-        loading,
-      }}
-    >
+    <AuthContext.Provider value={{ user, login, logout }}>
       {children}
     </AuthContext.Provider>
   );

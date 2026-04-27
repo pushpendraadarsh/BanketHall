@@ -1,273 +1,260 @@
-import React, { useState, useEffect } from 'react';
-import {
-  Box, Typography, Paper, Grid, Card, CardContent, CardMedia,
-  IconButton, Button, Dialog, DialogTitle, DialogContent,
-  DialogActions, TextField, Chip, Stack, Alert,
-  FormControlLabel, Switch, Tooltip
-} from '@mui/material';
+import React, { useState, useEffect } from "react";
+import axios from "axios";
 
-import {
-  Add, Edit, Delete, People, AttachMoney,
-  Wifi, LocalParking, AcUnit, Restaurant, Speaker
-} from '@mui/icons-material';
-
-import Sidebar from './Sidebar';
-
-// ✅ DUMMY DATA (IMPORTANT FIX)
-const dummyHalls = [
-  {
-    _id: "h1",
-    name: "Royal Banquet Hall",
-    capacity: 300,
-    pricePerHour: 5000,
-    description: "Luxury hall perfect for weddings and events.",
-    amenities: ["AC", "WiFi", "Parking"],
-    images: [],
-    isAvailable: true,
-    featured: true
-  },
-  {
-    _id: "h2",
-    name: "Grand Palace Hall",
-    capacity: 500,
-    pricePerHour: 8000,
-    description: "Premium hall with modern facilities.",
-    amenities: ["AC", "WiFi", "Catering"],
-    images: [],
-    isAvailable: false,
-    featured: false
-  }
-];
-
-const amenityOptions = [
-  { value: 'AC', label: 'Air Conditioning', icon: <AcUnit /> },
-  { value: 'WiFi', label: 'WiFi', icon: <Wifi /> },
-  { value: 'Parking', label: 'Parking', icon: <LocalParking /> },
-  { value: 'Catering', label: 'Catering', icon: <Restaurant /> },
-  { value: 'Sound System', label: 'Sound System', icon: <Speaker /> }
-];
+const API_BASE = "http://localhost:5000/api/halls";
 
 const HallsManagement = () => {
+  const [halls, setHalls] = useState([]);
+  const [open, setOpen] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
 
-  // ✅ use dummy instead of backend
-  const [halls, setHalls] = useState(dummyHalls);
-
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingHall, setEditingHall] = useState(null);
-
-  const [formData, setFormData] = useState({
-    name: '',
-    capacity: '',
-    pricePerHour: '',
-    description: '',
-    amenities: [],
-    images: [],
-    isAvailable: true,
-    featured: false
+  const [form, setForm] = useState({
+    name: "",
+    capacity: "",
+    pricePerHour: "",
+    description: "",
+    image: null
   });
 
-  const [selectedAmenities, setSelectedAmenities] = useState([]);
+  // ---------------- FETCH ----------------
+  const fetchHalls = async () => {
+    try {
+      setLoading(true);
+      const res = await axios.get(API_BASE);
+      setHalls(res.data);
+    } catch (err) {
+      console.log("FETCH ERROR:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    setHalls(dummyHalls);
+    fetchHalls();
   }, []);
 
-  const handleOpenDialog = (hall = null) => {
+  // ---------------- OPEN ----------------
+  const handleOpen = (hall = null) => {
     if (hall) {
-      setEditingHall(hall);
-      setFormData(hall);
-      setSelectedAmenities(hall.amenities);
-    } else {
-      setEditingHall(null);
-      setFormData({
-        name: '',
-        capacity: '',
-        pricePerHour: '',
-        description: '',
-        amenities: [],
-        images: [],
-        isAvailable: true,
-        featured: false
+      setEditingId(hall._id);
+      setForm({
+        name: hall.name || "",
+        capacity: hall.capacity || "",
+        pricePerHour: hall.pricePerHour || "",
+        description: hall.description || "",
+        image: null
       });
-      setSelectedAmenities([]);
-    }
-    setDialogOpen(true);
-  };
-
-  const toggleAmenity = (value) => {
-    setSelectedAmenities((prev) =>
-      prev.includes(value)
-        ? prev.filter((a) => a !== value)
-        : [...prev, value]
-    );
-  };
-
-  const handleSave = () => {
-    const newHall = {
-      ...formData,
-      _id: Date.now().toString(),
-      capacity: Number(formData.capacity),
-      pricePerHour: Number(formData.pricePerHour),
-      amenities: selectedAmenities
-    };
-
-    if (editingHall) {
-      setHalls(halls.map(h => h._id === editingHall._id ? newHall : h));
     } else {
-      setHalls([...halls, newHall]);
+      setEditingId(null);
+      setForm({
+        name: "",
+        capacity: "",
+        pricePerHour: "",
+        description: "",
+        image: null
+      });
     }
-
-    setDialogOpen(false);
+    setOpen(true);
   };
 
-  const handleDelete = (id) => {
-    setHalls(halls.filter(h => h._id !== id));
+  const handleClose = () => {
+    setOpen(false);
+    setEditingId(null);
+  };
+
+  // ---------------- SAVE ----------------
+  const handleSave = async () => {
+    try {
+      setSaving(true);
+
+      const data = new FormData();
+      data.append("name", form.name);
+      data.append("capacity", form.capacity);
+      data.append("pricePerHour", form.pricePerHour);
+      data.append("description", form.description);
+
+      if (form.image) {
+        data.append("image", form.image);
+      }
+
+      if (editingId) {
+        await axios.put(`${API_BASE}/${editingId}`, data);
+      } else {
+        await axios.post(API_BASE, data);
+      }
+
+      handleClose();
+      fetchHalls();
+    } catch (err) {
+      console.log("SAVE ERROR:", err.response?.data || err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // ---------------- DELETE ----------------
+  const handleDelete = async (id) => {
+    if (!window.confirm("Delete this hall?")) return;
+
+    try {
+      await axios.delete(`${API_BASE}/${id}`);
+      setHalls((prev) => prev.filter((h) => h._id !== id));
+    } catch (err) {
+      console.log("DELETE ERROR:", err);
+    }
   };
 
   return (
-    <Box display="flex">
+    <div className="p-6 space-y-6">
 
-      <Sidebar />
+      {/* HEADER */}
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-2xl font-bold">Halls Management</h1>
+          <p className="text-gray-500 text-sm">Manage banquet halls</p>
+        </div>
 
-      <Box component="main" sx={{ flexGrow: 1, p: 3 }}>
+        <button
+          onClick={() => handleOpen()}
+          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+        >
+          + Add Hall
+        </button>
+      </div>
 
-        <Box display="flex" justifyContent="space-between" mb={3}>
-          <Typography variant="h4">Halls Management (Demo)</Typography>
+      {/* LOADING */}
+      {loading && (
+        <div className="bg-blue-100 text-blue-700 p-3 rounded">
+          Loading halls...
+        </div>
+      )}
 
-          <Button
-            variant="contained"
-            startIcon={<Add />}
-            onClick={() => handleOpenDialog()}
-          >
-            Add Hall
-          </Button>
-        </Box>
+      {/* GRID */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {halls.map((hall) => (
+          <div key={hall._id} className="bg-white rounded shadow">
 
-        {halls.length === 0 && (
-          <Alert severity="info">No halls found</Alert>
-        )}
+           <img
+  src={
+    hall.images?.length
+      ? `http://localhost:5000/uploads/${hall.images[0]}`
+      : "https://picsum.photos/400/200"
+  }
+/>
+            <div className="p-4 space-y-2">
+              <h2 className="text-lg font-semibold">{hall.name}</h2>
 
-        <Grid container spacing={3}>
-          {halls.map((hall) => (
-            <Grid item xs={12} md={6} lg={4} key={hall._id}>
+              <div className="flex gap-2 text-sm">
+                <span className="bg-gray-200 px-2 py-1 rounded">
+                  👥 {hall.capacity}
+                </span>
+                <span className="bg-gray-200 px-2 py-1 rounded">
+                  ₹{hall.pricePerHour}
+                </span>
+              </div>
 
-              <Card>
+              <p className="text-sm text-gray-600">
+                {hall.description}
+              </p>
 
-                <CardMedia
-                  component="img"
-                  height="160"
-                  image="https://via.placeholder.com/400x200"
-                />
+              <div className="flex gap-2 pt-2">
+                <button
+                  onClick={() => handleOpen(hall)}
+                  className="text-blue-600"
+                >
+                  Edit
+                </button>
 
-                <CardContent>
+                <button
+                  onClick={() => handleDelete(hall._id)}
+                  className="text-red-600"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
 
-                  <Typography variant="h6">
-                    {hall.name}
-                  </Typography>
+          </div>
+        ))}
+      </div>
 
-                  <Stack direction="row" spacing={1} mt={1}>
-                    <Chip icon={<People />} label={hall.capacity} />
-                    <Chip icon={<AttachMoney />} label={`₹${hall.pricePerHour}`} />
-                  </Stack>
+      {/* MODAL */}
+      {open && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex justify-center items-center">
 
-                  <Typography variant="body2" mt={1}>
-                    {hall.description}
-                  </Typography>
+          <div className="bg-white rounded p-6 w-full max-w-md space-y-4">
+            <h2 className="text-xl font-bold">
+              {editingId ? "Edit Hall" : "Add Hall"}
+            </h2>
 
-                  <Stack direction="row" spacing={1} mt={1}>
-                    <IconButton onClick={() => handleOpenDialog(hall)}>
-                      <Edit />
-                    </IconButton>
+            <input
+              type="text"
+              placeholder="Name"
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+              className="w-full border p-2 rounded"
+            />
 
-                    <IconButton
-                      color="error"
-                      onClick={() => handleDelete(hall._id)}
-                    >
-                      <Delete />
-                    </IconButton>
-                  </Stack>
+            <input
+              type="number"
+              placeholder="Capacity"
+              value={form.capacity}
+              onChange={(e) => setForm({ ...form, capacity: e.target.value })}
+              className="w-full border p-2 rounded"
+            />
 
-                </CardContent>
-
-              </Card>
-
-            </Grid>
-          ))}
-        </Grid>
-
-        {/* Dialog */}
-        <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} fullWidth>
-
-          <DialogTitle>
-            {editingHall ? "Edit Hall" : "Add Hall"}
-          </DialogTitle>
-
-          <DialogContent>
-
-            <TextField
-              fullWidth
-              label="Name"
-              margin="dense"
-              value={formData.name}
+            <input
+              type="number"
+              placeholder="Price per Hour"
+              value={form.pricePerHour}
               onChange={(e) =>
-                setFormData({ ...formData, name: e.target.value })
+                setForm({ ...form, pricePerHour: e.target.value })
+              }
+              className="w-full border p-2 rounded"
+            />
+
+            <textarea
+              placeholder="Description"
+              value={form.description}
+              onChange={(e) =>
+                setForm({ ...form, description: e.target.value })
+              }
+              className="w-full border p-2 rounded"
+            />
+
+            <input
+              type="file"
+              onChange={(e) =>
+                setForm({ ...form, image: e.target.files[0] })
               }
             />
 
-            <TextField
-              fullWidth
-              label="Capacity"
-              margin="dense"
-              value={formData.capacity}
-              onChange={(e) =>
-                setFormData({ ...formData, capacity: e.target.value })
-              }
-            />
+            {form.image && (
+              <img
+                src={URL.createObjectURL(form.image)}
+                alt="preview"
+                className="w-full h-40 object-cover rounded"
+              />
+            )}
 
-            <TextField
-              fullWidth
-              label="Price"
-              margin="dense"
-              value={formData.pricePerHour}
-              onChange={(e) =>
-                setFormData({ ...formData, pricePerHour: e.target.value })
-              }
-            />
+            <div className="flex justify-end gap-2">
+              <button onClick={handleClose}>Cancel</button>
 
-            <Typography mt={2}>Amenities</Typography>
+              <button
+                onClick={handleSave}
+                className="bg-blue-600 text-white px-4 py-2 rounded"
+                disabled={saving}
+              >
+                {saving ? "Saving..." : "Save"}
+              </button>
+            </div>
+          </div>
 
-            <Stack direction="row" spacing={1} flexWrap="wrap">
-
-              {amenityOptions.map((a) => (
-                <Chip
-                  key={a.value}
-                  label={a.label}
-                  icon={a.icon}
-                  clickable
-                  color={
-                    selectedAmenities.includes(a.value)
-                      ? "primary"
-                      : "default"
-                  }
-                  onClick={() => toggleAmenity(a.value)}
-                />
-              ))}
-
-            </Stack>
-
-          </DialogContent>
-
-          <DialogActions>
-            <Button onClick={() => setDialogOpen(false)}>Cancel</Button>
-            <Button variant="contained" onClick={handleSave}>
-              Save
-            </Button>
-          </DialogActions>
-
-        </Dialog>
-
-      </Box>
-    </Box>
+        </div>
+      )}
+    </div>
   );
 };
 

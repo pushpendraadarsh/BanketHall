@@ -6,29 +6,20 @@ import { useEffect } from "react";
 const Dashboard = () => {
   const { user } = useAuth();
 
+  // ✅ ONLY use what actually exists in your context
   const {
-    stats,
     bookings,
-    fetchStats,
     fetchBookings,
     loading,
   } = useBooking();
 
-  // ✅ FIXED: proper dependency array
+  // ✅ SAFE fetch (NO function dependency issues)
   useEffect(() => {
-    fetchStats();
     fetchBookings();
-  }, [fetchStats, fetchBookings]);
+  }, []);
 
   // ✅ safety checks
   const safeBookings = Array.isArray(bookings) ? bookings : [];
-
-  const safeStats = stats || {
-    totalBookings: 0,
-    pendingBookings: 0,
-    confirmedBookings: 0,
-    cancelledBookings: 0,
-  };
 
   return (
     <motion.div
@@ -48,43 +39,36 @@ const Dashboard = () => {
           </p>
         </div>
 
-        {/* STATS */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 sm:gap-6 mb-10">
+        {/* SIMPLE STATS (FROM BOOKING DATA) */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-10">
 
-          <motion.div whileHover={{ scale: 1.03 }} className="p-5 sm:p-6 bg-white rounded-xl shadow">
+          <div className="p-5 bg-white rounded-xl shadow">
             <p className="text-gray-500 text-sm">Total Bookings</p>
-            <h2 className="text-2xl sm:text-3xl font-bold mt-2">
-              {safeStats.totalBookings}
+            <h2 className="text-2xl font-bold mt-2">
+              {safeBookings.length}
             </h2>
-          </motion.div>
+          </div>
 
-          <motion.div whileHover={{ scale: 1.03 }} className="p-5 sm:p-6 bg-yellow-100 rounded-xl shadow">
+          <div className="p-5 bg-yellow-100 rounded-xl shadow">
             <p className="text-yellow-700 text-sm">Pending</p>
-            <h2 className="text-2xl sm:text-3xl font-bold mt-2">
-              {safeStats.pendingBookings}
+            <h2 className="text-2xl font-bold mt-2">
+              {safeBookings.filter(b => b.status === "pending").length}
             </h2>
-          </motion.div>
+          </div>
 
-          <motion.div whileHover={{ scale: 1.03 }} className="p-5 sm:p-6 bg-green-100 rounded-xl shadow">
+          <div className="p-5 bg-green-100 rounded-xl shadow">
             <p className="text-green-700 text-sm">Confirmed</p>
-            <h2 className="text-2xl sm:text-3xl font-bold mt-2">
-              {safeStats.confirmedBookings}
+            <h2 className="text-2xl font-bold mt-2">
+              {safeBookings.filter(b => b.status === "confirmed").length}
             </h2>
-          </motion.div>
-
-          <motion.div whileHover={{ scale: 1.03 }} className="p-5 sm:p-6 bg-red-100 rounded-xl shadow">
-            <p className="text-red-700 text-sm">Cancelled</p>
-            <h2 className="text-2xl sm:text-3xl font-bold mt-2">
-              {safeStats.cancelledBookings}
-            </h2>
-          </motion.div>
+          </div>
 
         </div>
 
         {/* BOOKINGS SECTION */}
         <div className="bg-white p-5 sm:p-6 rounded-xl shadow">
 
-          <h2 className="text-lg sm:text-xl font-bold mb-5 sm:mb-6">
+          <h2 className="text-lg sm:text-xl font-bold mb-5">
             Recent Bookings
           </h2>
 
@@ -116,7 +100,9 @@ const Dashboard = () => {
                     {b.hallId?.name || "Hall"}
                   </p>
                   <p className="text-sm text-gray-500">
-                    {new Date(b.date).toLocaleDateString()}
+                    {b.date
+                      ? new Date(b.date).toLocaleDateString()
+                      : "No date"}
                   </p>
                 </div>
 

@@ -2,33 +2,43 @@ import User from '../models/User.js';
 import jwt from 'jsonwebtoken';
 
 export const register = async (req, res) => {
-  const { email, password, role } = req.body;
-
   try {
-    let user = await User.findOne({ email });
-    if (user) return res.status(400).json({ msg: 'User already exists' });
+    const { name, email, password, phone, role } = req.body;
 
-    user = new User({ email, password, role });
-    await user.save();
+    const exists = await User.findOne({ email });
+    if (exists) {
+      return res.status(400).json({ msg: "User already exists" });
+    }
 
-    const payload = { userId: user._id };
-    jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '1h' }, (err, token) => {
-      if (err) throw err;
-      res.json({ token });
+    const user = await User.create({
+      name,        // ✅ FIX: ADD NAME
+      email,
+      password,
+      phone,
+      role: role || "user",
     });
+
+    res.status(201).json({
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      phone: user.phone,
+      role: user.role,
+      createdAt: user.createdAt,
+    });
+
   } catch (err) {
-    res.status(500).json({ msg: 'Server error' });
+    console.log(err);
+    res.status(500).json({ msg: "Server error" });
   }
 };
+
+
 
 export const login = async (req, res) => {
   const { email, password } = req.body;
 
   try {
-    if (!email || !password) {
-      return res.status(400).json({ msg: "Email and password required" });
-    }
-
     const user = await User.findOne({ email });
 
     if (!user) {
@@ -41,25 +51,23 @@ export const login = async (req, res) => {
       return res.status(400).json({ msg: "Invalid password" });
     }
 
-    const payload = { userId: user._id };
+    const payload = {
+      userId: user._id.toString(),
+      role: user.role,
+    };
 
-    jwt.sign(
-      payload,
-      process.env.JWT_SECRET,
-      { expiresIn: "1h" },
-      (err, token) => {
-        if (err) throw err;
+    const token = jwt.sign(payload, process.env.JWT_SECRET, {
+      expiresIn: "1h",
+    });
 
-        res.json({
-          token,
-          role: user.role,
-          user: {
-            id: user._id,
-            email: user.email,
-          },
-        });
-      }
-    );
+    res.json({
+      token,
+      user: {
+        id: user._id,
+        email: user.email,
+        role: user.role,
+      },
+    });
   } catch (err) {
     res.status(500).json({ msg: "Server error" });
   }

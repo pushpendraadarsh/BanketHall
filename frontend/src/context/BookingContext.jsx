@@ -1,90 +1,77 @@
-import React, {
-  createContext,
-  useContext,
-  useState,
-  useCallback,
-} from "react";
+import { createContext, useContext, useState } from "react";
 import axios from "axios";
-import { useAuth } from "./AuthContext";
 
 const BookingContext = createContext();
 
-export const useBooking = () => {
-  return useContext(BookingContext);
-};
+const API = "http://localhost:5000/api";
 
+// ================= HELPER =================
+const getToken = () => localStorage.getItem("adminToken");
+
+// ================= PROVIDER =================
 export const BookingProvider = ({ children }) => {
-  const { token } = useAuth();
-
-  const [stats, setStats] = useState(null);
   const [bookings, setBookings] = useState([]);
+  const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
 
-  // ========================
-  // FETCH STATS (Dashboard)
-  // ========================
-  const fetchStats = useCallback(async () => {
-    if (!token) return;
-
+  // ================= FETCH BOOKINGS =================
+  const fetchBookings = async () => {
     try {
       setLoading(true);
 
-      const res = await axios.get(
-        "http://localhost:5000/api/bookings/stats",
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      const token = getToken();
 
-      setStats(res.data);
+      const res = await axios.get(`${API}/bookings`, {
+        headers: {
+          Authorization: token ? `Bearer ${token}` : "",
+        },
+      });
+
+      setBookings(res.data);
     } catch (err) {
-      setError(err.response?.data?.msg || "Failed to fetch stats");
+      console.log("FETCH BOOKINGS ERROR:", err.response?.data || err.message);
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  };
 
-  // ========================
-  // FETCH BOOKINGS (List)
-  // ========================
-  const fetchBookings = useCallback(async () => {
-    if (!token) return;
-
+  // ================= FETCH STATS =================
+  const fetchStats = async () => {
     try {
-      setLoading(true);
+      const token = getToken();
 
-      const res = await axios.get(
-        "http://localhost:5000/api/bookings",
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      const res = await axios.get(`${API}/bookings`, {
+        headers: {
+          Authorization: token ? `Bearer ${token}` : "",
+        },
+      });
 
-      setBookings(res.data || []);
+      const data = res.data;
+
+      setStats({
+        totalBookings: data.length,
+        pendingBookings: data.filter((b) => b.status === "pending").length,
+        confirmedBookings: data.filter((b) => b.status === "confirmed").length,
+        cancelledBookings: data.filter((b) => b.status === "cancelled").length,
+      });
     } catch (err) {
-      setError(err.response?.data?.msg || "Failed to fetch bookings");
-    } finally {
-      setLoading(false);
+      console.log("FETCH STATS ERROR:", err.response?.data || err.message);
     }
-  }, [token]);
-
-  const value = {
-    stats,
-    bookings,
-    loading,
-    error,
-    fetchStats,
-    fetchBookings,
   };
 
   return (
-    <BookingContext.Provider value={value}>
+    <BookingContext.Provider
+      value={{
+        bookings,
+        stats,
+        loading,
+        fetchBookings,
+        fetchStats,
+      }}
+    >
       {children}
     </BookingContext.Provider>
   );
 };
+
+export const useBooking = () => useContext(BookingContext);

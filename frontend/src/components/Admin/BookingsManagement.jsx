@@ -1,102 +1,122 @@
-import React, { useState, useEffect } from 'react';
-import {
-  Box, Typography, Paper, Table, TableBody, TableCell,
-  TableContainer, TableHead, TableRow, Chip, IconButton,
-  Select, MenuItem, FormControl, Button, Grid,
-  Pagination, Stack, Tooltip, Avatar, Dialog,
-  DialogTitle, DialogContent, DialogActions, Card,
-  CardContent
-} from '@mui/material';
+import React, { useState, useEffect } from "react";
+import axios from "axios";
 
 import {
-  Delete, Visibility, Refresh,
-  CheckCircle, Cancel, Pending,
-  EventNote, Phone, Email,
-  AccessTime, MeetingRoom
-} from '@mui/icons-material';
+  Box,
+  Typography,
+  Paper,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Chip,
+  IconButton,
+  Stack,
+  Avatar,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+  Grid,
+  FormControl,
+  Select,
+  MenuItem
+} from "@mui/material";
 
-import Sidebar from './Sidebar';
+import {
+  Visibility,
+  Refresh,
+  CheckCircle,
+  Cancel,
+  Pending
+} from "@mui/icons-material";
 
-// ✅ DUMMY DATA (IMPORTANT FIX)
-const dummyBookings = [
-  {
-    _id: "1",
-    createdAt: new Date(),
-    status: "pending",
-    userId: {
-      name: "Rahul Sharma",
-      email: "rahul@gmail.com",
-      phone: "9876543210"
-    },
-    hallId: { name: "Royal Banquet Hall" },
-    date: new Date(),
-    startTime: "10:00 AM",
-    endTime: "02:00 PM",
-    totalPrice: 25000,
-    paymentStatus: "pending",
-    specialRequests: "Need decoration with flowers"
-  },
-  {
-    _id: "2",
-    createdAt: new Date(),
-    status: "confirmed",
-    userId: {
-      name: "Priya Verma",
-      email: "priya@gmail.com",
-      phone: "9123456780"
-    },
-    hallId: { name: "Grand Palace Hall" },
-    date: new Date(),
-    startTime: "06:00 PM",
-    endTime: "11:00 PM",
-    totalPrice: 40000,
-    paymentStatus: "paid",
-    specialRequests: "DJ system required"
+import Sidebar from "./Sidebar";
+
+// ================= API =================
+const API = axios.create({
+  baseURL: "http://localhost:5000/api",
+});
+
+// 🔐 TOKEN ATTACHMENT (IMPORTANT)
+API.interceptors.request.use((req) => {
+  const token = localStorage.getItem("token");
+
+  if (token) {
+    req.headers.Authorization = `Bearer ${token}`;
   }
-];
+
+  return req;
+});
 
 const BookingsManagement = () => {
-  // ✅ use dummy data instead of context
-  const [bookings, setBookings] = useState(dummyBookings);
-
-  const [filters, setFilters] = useState({ status: '' });
-  const [pagination, setPagination] = useState({
-    page: 1,
-    totalPages: 1
-  });
+  const [bookings, setBookings] = useState([]);
+  const [filters, setFilters] = useState({ status: "" });
+  const [loading, setLoading] = useState(false);
 
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
 
+  // ================= FETCH BOOKINGS =================
+  const fetchBookings = async () => {
+    try {
+      setLoading(true);
+
+      const res = await API.get("/bookings");
+
+      setBookings(res.data);
+    } catch (err) {
+      console.log("FETCH ERROR:", err.response?.data || err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    // later replace with API
-    setBookings(dummyBookings);
+    fetchBookings();
   }, []);
 
-  const getStatusConfig = (status) => {
-    const map = {
-      pending: { color: "warning", icon: <Pending />, label: "Pending" },
-      confirmed: { color: "success", icon: <CheckCircle />, label: "Confirmed" },
-      cancelled: { color: "error", icon: <Cancel />, label: "Cancelled" }
-    };
-    return map[status] || map.pending;
+  // ================= UPDATE STATUS =================
+  const updateStatus = async (id, status) => {
+    try {
+      await API.put(`/bookings/${id}/status`, { status });
+
+      fetchBookings(); // refresh after update
+    } catch (err) {
+      console.log("STATUS ERROR:", err.response?.data || err.message);
+    }
+  };
+
+  // ================= STATUS UI =================
+  const getStatus = (status) => {
+    switch (status) {
+      case "confirmed":
+        return { color: "success", icon: <CheckCircle /> };
+      case "cancelled":
+        return { color: "error", icon: <Cancel /> };
+      default:
+        return { color: "warning", icon: <Pending /> };
+    }
   };
 
   return (
     <Box display="flex">
-
-      {/* Sidebar */}
       <Sidebar />
 
       <Box component="main" sx={{ flexGrow: 1, p: 3 }}>
 
+        {/* HEADER */}
         <Typography variant="h4" gutterBottom>
-          Bookings Management (Demo)
+          Bookings Management
         </Typography>
 
         {/* FILTER */}
         <Paper sx={{ p: 2, mb: 2 }}>
           <Grid container spacing={2}>
+
             <Grid item xs={12} sm={4}>
               <FormControl fullWidth size="small">
                 <Select
@@ -108,15 +128,21 @@ const BookingsManagement = () => {
                   <MenuItem value="">All</MenuItem>
                   <MenuItem value="pending">Pending</MenuItem>
                   <MenuItem value="confirmed">Confirmed</MenuItem>
+                  <MenuItem value="cancelled">Cancelled</MenuItem>
                 </Select>
               </FormControl>
             </Grid>
 
             <Grid item>
-              <Button variant="contained" startIcon={<Refresh />}>
+              <Button
+                startIcon={<Refresh />}
+                variant="contained"
+                onClick={fetchBookings}
+              >
                 Refresh
               </Button>
             </Grid>
+
           </Grid>
         </Paper>
 
@@ -126,7 +152,7 @@ const BookingsManagement = () => {
 
             <TableHead>
               <TableRow>
-                <TableCell>Customer</TableCell>
+                <TableCell>User</TableCell>
                 <TableCell>Hall</TableCell>
                 <TableCell>Date</TableCell>
                 <TableCell>Time</TableCell>
@@ -144,49 +170,58 @@ const BookingsManagement = () => {
                   </TableCell>
                 </TableRow>
               ) : (
-                bookings.map((b) => {
-                  const status = getStatusConfig(b.status);
+                bookings
+                  .filter((b) =>
+                    filters.status ? b.status === filters.status : true
+                  )
+                  .map((b) => {
+                    const status = getStatus(b.status);
 
-                  return (
-                    <TableRow key={b._id} hover>
+                    return (
+                      <TableRow key={b._id} hover>
 
-                      <TableCell>
-                        <Box display="flex" alignItems="center">
-                          <Avatar sx={{ mr: 1 }}>
-                            {b.userId.name[0]}
-                          </Avatar>
-                          <Box>
-                            <Typography>{b.userId.name}</Typography>
-                            <Typography variant="caption">
-                              {b.userId.email}
-                            </Typography>
-                          </Box>
-                        </Box>
-                      </TableCell>
+                        {/* USER */}
+                        <TableCell>
+                          <Stack direction="row" spacing={1} alignItems="center">
+                            <Avatar>
+                              {b.userId?.name?.charAt(0) || "U"}
+                            </Avatar>
+                            <div>
+                              <div>{b.userId?.name}</div>
+                              <small>{b.userId?.email}</small>
+                            </div>
+                          </Stack>
+                        </TableCell>
 
-                      <TableCell>{b.hallId.name}</TableCell>
+                        {/* HALL */}
+                        <TableCell>{b.hallId?.name}</TableCell>
 
-                      <TableCell>
-                        {new Date(b.date).toLocaleDateString()}
-                      </TableCell>
+                        {/* DATE */}
+                        <TableCell>
+                          {new Date(b.date).toLocaleDateString()}
+                        </TableCell>
 
-                      <TableCell>
-                        {b.startTime} - {b.endTime}
-                      </TableCell>
+                        {/* TIME */}
+                        <TableCell>
+                          {b.startTime} - {b.endTime}
+                        </TableCell>
 
-                      <TableCell>₹{b.totalPrice}</TableCell>
+                        {/* AMOUNT */}
+                        <TableCell>₹{b.totalPrice}</TableCell>
 
-                      <TableCell>
-                        <Chip
-                          icon={status.icon}
-                          label={status.label}
-                          color={status.color}
-                          size="small"
-                        />
-                      </TableCell>
+                        {/* STATUS */}
+                        <TableCell>
+                          <Chip
+                            icon={status.icon}
+                            label={b.status}
+                            color={status.color}
+                            size="small"
+                          />
+                        </TableCell>
 
-                      <TableCell>
-                        <Stack direction="row" spacing={1}>
+                        {/* ACTIONS */}
+                        <TableCell>
+
                           <IconButton
                             onClick={() => {
                               setSelectedBooking(b);
@@ -196,22 +231,38 @@ const BookingsManagement = () => {
                             <Visibility />
                           </IconButton>
 
-                          <IconButton color="error">
-                            <Delete />
+                          {/* APPROVE */}
+                          <IconButton
+                            color="success"
+                            onClick={() =>
+                              updateStatus(b._id, "confirmed")
+                            }
+                          >
+                            <CheckCircle />
                           </IconButton>
-                        </Stack>
-                      </TableCell>
 
-                    </TableRow>
-                  );
-                })
+                          {/* REJECT */}
+                          <IconButton
+                            color="error"
+                            onClick={() =>
+                              updateStatus(b._id, "cancelled")
+                            }
+                          >
+                            <Cancel />
+                          </IconButton>
+
+                        </TableCell>
+
+                      </TableRow>
+                    );
+                  })
               )}
             </TableBody>
 
           </Table>
         </TableContainer>
 
-        {/* DETAILS DIALOG */}
+        {/* DETAILS MODAL */}
         <Dialog
           open={detailsOpen}
           onClose={() => setDetailsOpen(false)}
@@ -222,9 +273,11 @@ const BookingsManagement = () => {
           <DialogContent>
             {selectedBooking && (
               <Box>
-                <p><b>Name:</b> {selectedBooking.userId.name}</p>
-                <p><b>Email:</b> {selectedBooking.userId.email}</p>
-                <p><b>Hall:</b> {selectedBooking.hallId.name}</p>
+                <p><b>Name:</b> {selectedBooking.userId?.name}</p>
+                <p><b>Email:</b> {selectedBooking.userId?.email}</p>
+                <p><b>Hall:</b> {selectedBooking.hallId?.name}</p>
+                <p><b>Date:</b> {new Date(selectedBooking.date).toDateString()}</p>
+                <p><b>Time:</b> {selectedBooking.startTime} - {selectedBooking.endTime}</p>
                 <p><b>Amount:</b> ₹{selectedBooking.totalPrice}</p>
                 <p><b>Status:</b> {selectedBooking.status}</p>
               </Box>

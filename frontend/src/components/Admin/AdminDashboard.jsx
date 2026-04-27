@@ -1,216 +1,163 @@
-import React, { useEffect, useState, useMemo } from 'react';
-import {
-  Grid, Paper, Typography, Box, Card, CardContent,
-  Table, TableBody, TableCell, TableContainer,
-  TableHead, TableRow, Avatar, Alert, Skeleton, Divider
-} from '@mui/material';
-
-import {
-  EventAvailable, AttachMoney, People
-} from '@mui/icons-material';
-
+import React, { useEffect, useState } from "react";
 import {
   LineChart, Line, XAxis, YAxis,
-  CartesianGrid, Tooltip as RechartsTooltip, Legend,
-  ResponsiveContainer
-} from 'recharts';
+  CartesianGrid, Tooltip, ResponsiveContainer
+} from "recharts";
 
-import { useBooking } from '../../context/BookingContext';
-import { useAuth } from '../../context/AuthContext';
-import LoadingSpinner from '../Common/LoadingSpinner';
-
-// Stat Card (Bootstrap Style)
-const StatCard = ({ title, value, icon, bg }) => (
-  <Card sx={{ height: '100%', bgcolor: bg, color: 'white', boxShadow: 3 }}>
-    <CardContent>
-      <Box display="flex" justifyContent="space-between" alignItems="center">
-        <Box>
-          <Typography variant="subtitle2" sx={{ opacity: 0.9 }}>
-            {title}
-          </Typography>
-          <Typography variant="h4" fontWeight="bold">
-            {value ?? '--'}
-          </Typography>
-        </Box>
-        <Avatar sx={{ bgcolor: 'rgba(255,255,255,0.3)' }}>
-          {icon}
-        </Avatar>
-      </Box>
-    </CardContent>
-  </Card>
-);
-
-// Tooltip
-const CustomTooltip = ({ active, payload, label }) => {
-  if (active && payload?.length) {
-    return (
-      <Paper sx={{ p: 1 }}>
-        <Typography fontWeight="bold">{label}</Typography>
-        {payload.map((p, i) => (
-          <Typography key={i}>
-            {p.name}: {p.value}
-          </Typography>
-        ))}
-      </Paper>
-    );
-  }
-  return null;
-};
+import { useBooking } from "../../context/BookingContext";
+import { useAuth } from "../../context/AuthContext";
 
 const AdminDashboard = () => {
-  const { stats, fetchStats, loading, error } = useBooking();
+  const { stats, bookings, fetchStats, fetchBookings, loading } = useBooking();
   const { user } = useAuth();
 
   const [chartData, setChartData] = useState([]);
 
   useEffect(() => {
     fetchStats();
-  }, [fetchStats]);
+    fetchBookings();
+  }, [fetchStats, fetchBookings]);
 
   useEffect(() => {
     if (stats?.monthlyBookings) {
       setChartData(
-        stats.monthlyBookings.map(item => ({
+        stats.monthlyBookings.map((item) => ({
           month: `${item._id.month}/${item._id.year}`,
           bookings: item.count,
-          revenue: item.revenue
         }))
       );
     }
   }, [stats]);
 
-  if (loading && !stats) return <LoadingSpinner />;
+  const safeStats = stats || {
+    totalBookings: 0,
+    pendingBookings: 0,
+    confirmedBookings: 0,
+    cancelledBookings: 0,
+  };
 
-  if (error) {
-    return (
-      <Box p={3}>
-        <Alert severity="error">{error}</Alert>
-      </Box>
-    );
-  }
+  const safeBookings = Array.isArray(bookings) ? bookings : [];
 
   return (
-    <Box>
+    <div className="space-y-4">
 
-      {/* Header */}
-      <Typography variant="h4" mb={3} fontWeight="bold">
-        Dashboard
-      </Typography>
+      {/* HEADER */}
+      <div>
+        <h1 className="text-2xl font-bold text-gray-800">
+          Dashboard
+        </h1>
+        <p className="text-gray-500 text-sm">
+          Welcome back, {user?.email || "Admin"} 👋
+        </p>
+      </div>
 
-      {/* Stat Cards */}
-      <Grid container spacing={3}>
-        <Grid item xs={12} md={3}>
-          <StatCard
-            title="Primary Card"
-            value={stats?.totalBookings}
-            icon={<EventAvailable />}
-            bg="#0d6efd"
-          />
-        </Grid>
+      {/* STATS */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
 
-        <Grid item xs={12} md={3}>
-          <StatCard
-            title="Warning Card"
-            value={stats?.pendingBookings}
-            icon={<EventAvailable />}
-            bg="#ffc107"
-          />
-        </Grid>
+        <div className="bg-[#878C53] text-white p-5 rounded-xl shadow">
+          <p className="text-sm opacity-80">Total Bookings</p>
+          <h2 className="text-3xl font-bold mt-2">
+            {safeStats.totalBookings}
+          </h2>
+        </div>
 
-        <Grid item xs={12} md={3}>
-          <StatCard
-            title="Success Card"
-            value={stats?.confirmedBookings}
-            icon={<AttachMoney />}
-            bg="#198754"
-          />
-        </Grid>
+        <div className="bg-[#a3a86b] text-white p-5 rounded-xl shadow">
+          <p className="text-sm opacity-80">Pending</p>
+          <h2 className="text-3xl font-bold mt-2">
+            {safeStats.pendingBookings}
+          </h2>
+        </div>
 
-        <Grid item xs={12} md={3}>
-          <StatCard
-            title="Danger Card"
-            value={stats?.cancelledBookings}
-            icon={<People />}
-            bg="#dc3545"
-          />
-        </Grid>
-      </Grid>
+        <div className="bg-[#6f7445] text-white p-5 rounded-xl shadow">
+          <p className="text-sm opacity-80">Confirmed</p>
+          <h2 className="text-3xl font-bold mt-2">
+            {safeStats.confirmedBookings}
+          </h2>
+        </div>
 
-      {/* Charts */}
-      <Grid container spacing={3} mt={2}>
-        <Grid item xs={12} md={8}>
-          <Card sx={{ p: 2 }}>
-            <Typography variant="h6" mb={1}>Area Chart Example</Typography>
-            <Divider sx={{ mb: 2 }} />
+        <div className="bg-[#4f5330] text-white p-5 rounded-xl shadow">
+          <p className="text-sm opacity-80">Cancelled</p>
+          <h2 className="text-3xl font-bold mt-2">
+            {safeStats.cancelledBookings}
+          </h2>
+        </div>
 
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" />
-                <YAxis />
-                <RechartsTooltip content={<CustomTooltip />} />
-                <Legend />
-                <Line dataKey="bookings" stroke="#0d6efd" strokeWidth={2} />
-                <Line dataKey="revenue" stroke="#198754" strokeWidth={2} />
-              </LineChart>
-            </ResponsiveContainer>
-          </Card>
-        </Grid>
+      </div>
 
-        <Grid item xs={12} md={4}>
-          <Card sx={{ p: 2 }}>
-            <Typography variant="h6" mb={1}>Bar Chart Example</Typography>
-            <Divider sx={{ mb: 2 }} />
+      {/* CHART + BOOKINGS */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" />
-                <YAxis />
-                <RechartsTooltip />
-                <Line type="monotone" dataKey="bookings" stroke="#ffc107" />
-              </LineChart>
-            </ResponsiveContainer>
-          </Card>
-        </Grid>
-      </Grid>
+        {/* CHART */}
+        <div className="lg:col-span-2 bg-white p-6 rounded-xl shadow">
+          <h2 className="font-semibold text-lg mb-4">
+            Booking Trends
+          </h2>
 
-      {/* Data Table */}
-      <Card sx={{ mt: 4, p: 2 }}>
-        <Typography variant="h6" mb={1}>DataTable Example</Typography>
-        <Divider sx={{ mb: 2 }} />
+          <ResponsiveContainer width="100%" height={300}>
+            <LineChart data={chartData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="month" />
+              <YAxis />
+              <Tooltip />
+              <Line
+                type="monotone"
+                dataKey="bookings"
+                stroke="#878C53"
+                strokeWidth={3}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
 
-        <TableContainer component={Paper}>
-          <Table>
-            <TableHead sx={{ bgcolor: '#f8f9fa' }}>
-              <TableRow>
-                <TableCell>Name</TableCell>
-                <TableCell>Position</TableCell>
-                <TableCell>Office</TableCell>
-                <TableCell>Age</TableCell>
-                <TableCell>Start Date</TableCell>
-                <TableCell>Salary</TableCell>
-              </TableRow>
-            </TableHead>
+        {/* RECENT BOOKINGS */}
+        <div className="bg-white p-6 rounded-xl shadow">
+          <h2 className="font-semibold text-lg mb-4">
+            Recent Bookings
+          </h2>
 
-            <TableBody>
-              {stats?.usersTable?.map((row, i) => (
-                <TableRow key={i}>
-                  <TableCell>{row.name}</TableCell>
-                  <TableCell>{row.position}</TableCell>
-                  <TableCell>{row.office}</TableCell>
-                  <TableCell>{row.age}</TableCell>
-                  <TableCell>{row.startDate}</TableCell>
-                  <TableCell>${row.salary}</TableCell>
-                </TableRow>
+          {loading ? (
+            <p className="text-gray-400">Loading...</p>
+          ) : safeBookings.length === 0 ? (
+            <p className="text-gray-400">No bookings yet</p>
+          ) : (
+            <div className="space-y-4">
+              {safeBookings.slice(0, 5).map((b) => (
+                <div
+                  key={b._id}
+                  className="flex justify-between items-center border-b pb-3"
+                >
+                  <div>
+                    <p className="font-medium text-gray-800">
+                      {b.hallId?.name || "Hall"}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {new Date(b.date).toLocaleDateString()}
+                    </p>
+                  </div>
+
+                  <div className="text-right">
+                    <p className="font-semibold">
+                      ₹{b.totalPrice || 0}
+                    </p>
+                    <span className={`text-xs px-2 py-1 rounded
+                      ${b.status === "confirmed"
+                        ? "bg-green-200 text-green-800"
+                        : b.status === "cancelled"
+                        ? "bg-red-200 text-red-800"
+                        : "bg-yellow-200 text-yellow-800"}
+                    `}>
+                      {b.status}
+                    </span>
+                  </div>
+                </div>
               ))}
-            </TableBody>
+            </div>
+          )}
+        </div>
 
-          </Table>
-        </TableContainer>
-      </Card>
+      </div>
 
-    </Box>
+    </div>
   );
 };
 

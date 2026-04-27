@@ -1,269 +1,219 @@
-// components/Admin/UsersManagement.jsx
-import React, { useState } from 'react';
-import {
-  Box, Typography, Paper, Table, TableBody, TableCell,
-  TableContainer, TableHead, TableRow, IconButton,
-  TextField, Button, Grid, Alert, Pagination, Chip,
-  Avatar, Dialog, DialogTitle, DialogContent,
-  DialogActions, FormControl, InputLabel, Select,
-  MenuItem, Tooltip, Stack
-} from '@mui/material';
-
-import {
-  Delete, AdminPanelSettings, Person,
-  CheckCircle, Search, Refresh
-} from '@mui/icons-material';
+import React, { useEffect, useState } from "react";
+import axios from "axios";
 
 const UsersManagement = () => {
-  // ✅ DUMMY DATA (2 users)
-  const [users, setUsers] = useState([
-    {
-      _id: "u1",
-      name: "John Doe",
-      email: "john@example.com",
-      phone: "9876543210",
-      role: "user",
-      createdAt: new Date(),
-    },
-    {
-      _id: "u2",
-      name: "Admin User",
-      email: "admin@example.com",
-      phone: "9999999999",
-      role: "admin",
-      createdAt: new Date(),
-    },
-  ]);
+  const [users, setUsers] = useState([]);
+  const [search, setSearch] = useState("");
+  const [roleFilter, setRoleFilter] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const [searchTerm, setSearchTerm] = useState('');
-  const [roleFilter, setRoleFilter] = useState('');
-  const [roleDialogOpen, setRoleDialogOpen] = useState(false);
-  const [selectedUser, setSelectedUser] = useState(null);
-  const [newRole, setNewRole] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const usersPerPage = 5;
 
-  // 🔍 search filter (frontend only)
-  const filteredUsers = users.filter((user) => {
+  const API = axios.create({
+    baseURL: "http://localhost:5000/api/users",
+  });
+
+  API.interceptors.request.use((req) => {
+    const token = localStorage.getItem("token");
+    if (token) req.headers.Authorization = `Bearer ${token}`;
+    return req;
+  });
+
+  // FETCH USERS
+  const fetchUsers = async () => {
+    try {
+      setLoading(true);
+      const res = await API.get("/");
+      setUsers(res.data);
+    } catch (err) {
+      console.log(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  // UPDATE ROLE
+  const updateRole = async (id, role) => {
+    try {
+      await API.put(`/${id}/role`, { role });
+
+      setUsers((prev) =>
+        prev.map((u) => (u._id === id ? { ...u, role } : u))
+      );
+    } catch (err) {
+      console.log(err);
+    }
+  };
+
+  // DELETE USER
+  const deleteUser = async (id) => {
+    const confirmDelete = window.confirm("Delete this user?");
+    if (!confirmDelete) return;
+
+    try {
+      await API.delete(`/${id}`);
+      setUsers(users.filter((u) => u._id !== id));
+    } catch (err) {
+      console.log(err);
+    }
+  };
+
+  // FILTER
+  const filteredUsers = users.filter((u) => {
     const matchSearch =
-      user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchTerm.toLowerCase());
+      (u.email || "").toLowerCase().includes(search.toLowerCase()) ||
+      (u.phone || "").includes(search);
 
-    const matchRole = roleFilter ? user.role === roleFilter : true;
+    const matchRole = roleFilter ? u.role === roleFilter : true;
 
     return matchSearch && matchRole;
   });
 
-  const handleDeleteUser = (id) => {
-    setUsers(users.filter((u) => u._id !== id));
-  };
+  // PAGINATION
+  const indexOfLast = currentPage * usersPerPage;
+  const indexOfFirst = indexOfLast - usersPerPage;
+  const currentUsers = filteredUsers.slice(indexOfFirst, indexOfLast);
 
-  const handleRoleChange = () => {
-    setUsers(users.map((u) =>
-      u._id === selectedUser._id ? { ...u, role: newRole } : u
-    ));
-    setRoleDialogOpen(false);
-  };
-
-  const getRoleChip = (role) => {
-    if (role === 'admin') {
-      return <Chip icon={<AdminPanelSettings />} label="Admin" color="primary" size="small" />;
-    }
-    return <Chip icon={<Person />} label="User" color="default" size="small" />;
-  };
+  const totalPages = Math.ceil(filteredUsers.length / usersPerPage);
 
   return (
-    <Box>
+    <div className="space-y-6">
 
-      <Typography variant="h4" gutterBottom>
-        Manage Users
-      </Typography>
+      {/* HEADER */}
+      <div>
+        <h1 className="text-2xl font-bold text-gray-800">
+          Users Management
+        </h1>
+        <p className="text-gray-500 text-sm">
+          Admin Control Panel
+        </p>
+      </div>
 
-      {/* Filters */}
-      <Paper sx={{ p: 2, mb: 2 }}>
-        <Grid container spacing={2} alignItems="center">
+      {/* FILTERS */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
-          <Grid item xs={12} sm={6}>
-            <TextField
-              fullWidth
-              size="small"
-              label="Search Users"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              InputProps={{
-                endAdornment: <Search />
-              }}
-            />
-          </Grid>
+        <input
+          className="border p-2 rounded-lg focus:ring-2 focus:ring-[#878C53]"
+          placeholder="Search email or phone..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
 
-          <Grid item xs={12} sm={3}>
-            <FormControl fullWidth size="small">
-              <InputLabel>Role</InputLabel>
-              <Select
-                value={roleFilter}
-                label="Role"
-                onChange={(e) => setRoleFilter(e.target.value)}
-              >
-                <MenuItem value="">All</MenuItem>
-                <MenuItem value="user">User</MenuItem>
-                <MenuItem value="admin">Admin</MenuItem>
-              </Select>
-            </FormControl>
-          </Grid>
+        <select
+          className="border p-2 rounded-lg"
+          value={roleFilter}
+          onChange={(e) => setRoleFilter(e.target.value)}
+        >
+          <option value="">All Roles</option>
+          <option value="user">User</option>
+          <option value="admin">Admin</option>
+        </select>
 
-          <Grid item xs={12} sm={3}>
-            <Button fullWidth variant="outlined" startIcon={<Refresh />}
-              onClick={() => {
-                setSearchTerm('');
-                setRoleFilter('');
-              }}
-            >
-              Reset
-            </Button>
-          </Grid>
+      </div>
 
-        </Grid>
-      </Paper>
+      {/* TABLE */}
+      <div className="bg-white shadow rounded-xl overflow-hidden">
 
-      {/* Table */}
-      <TableContainer component={Paper}>
-        <Table>
+        {loading ? (
+          <div className="p-6 text-gray-500">Loading users...</div>
+        ) : (
+          <table className="w-full text-left">
 
-          <TableHead>
-            <TableRow>
-              <TableCell>User</TableCell>
-              <TableCell>Contact</TableCell>
-              <TableCell>Date</TableCell>
-              <TableCell>Role</TableCell>
-              <TableCell>Status</TableCell>
-              <TableCell align="center">Actions</TableCell>
-            </TableRow>
-          </TableHead>
+            <thead className="bg-gray-100">
+              <tr>
+                <th className="p-3">Phone</th>
+                <th className="p-3">Email</th>
+                <th className="p-3">Role</th>
+                <th className="p-3">Actions</th>
+              </tr>
+            </thead>
 
-          <TableBody>
+            <tbody>
 
-            {filteredUsers.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={6} align="center">
-                  No users found
-                </TableCell>
-              </TableRow>
-            ) : (
-              filteredUsers.map((user) => (
-                <TableRow key={user._id} hover>
+              {currentUsers.length === 0 ? (
+                <tr>
+                  <td colSpan="4" className="text-center p-4 text-gray-500">
+                    No users found
+                  </td>
+                </tr>
+              ) : (
+                currentUsers.map((u) => (
+                  <tr key={u._id} className="border-t hover:bg-gray-50">
 
-                  {/* User */}
-                  <TableCell>
-                    <Box display="flex" alignItems="center">
-                      <Avatar sx={{ mr: 2 }}>
-                        {user.name.charAt(0)}
-                      </Avatar>
-                      <Box>
-                        <Typography fontWeight="bold">
-                          {user.name}
-                        </Typography>
-                        <Typography variant="caption">
-                          {user._id}
-                        </Typography>
-                      </Box>
-                    </Box>
-                  </TableCell>
+                    {/* PHONE */}
+                    <td className="p-3">
+                      {u.phone || "N/A"}
+                    </td>
 
-                  {/* Contact */}
-                  <TableCell>
-                    <Typography>{user.email}</Typography>
-                    <Typography variant="caption">
-                      {user.phone}
-                    </Typography>
-                  </TableCell>
+                    {/* EMAIL */}
+                    <td className="p-3">
+                      {u.email}
+                    </td>
 
-                  {/* Date */}
-                  <TableCell>
-                    {new Date(user.createdAt).toLocaleDateString()}
-                  </TableCell>
+                    {/* ROLE */}
+                    <td className="p-3">
+                      <select
+                        value={u.role}
+                        onChange={(e) =>
+                          updateRole(u._id, e.target.value)
+                        }
+                        className={`px-2 py-1 rounded text-sm border ${
+                          u.role === "admin"
+                            ? "text-blue-600"
+                            : "text-green-600"
+                        }`}
+                      >
+                        <option value="user">user</option>
+                        <option value="admin">admin</option>
+                      </select>
+                    </td>
 
-                  {/* Role */}
-                  <TableCell>
-                    {getRoleChip(user.role)}
-                  </TableCell>
+                    {/* ACTIONS */}
+                    <td className="p-3">
+                      <button
+                        onClick={() => deleteUser(u._id)}
+                        className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-sm"
+                      >
+                        Delete
+                      </button>
+                    </td>
 
-                  {/* Status */}
-                  <TableCell>
-                    <Chip
-                      label="Active"
-                      color="success"
-                      icon={<CheckCircle />}
-                      size="small"
-                    />
-                  </TableCell>
+                  </tr>
+                ))
+              )}
 
-                  {/* Actions */}
-                  <TableCell align="center">
-                    <Stack direction="row" spacing={1} justifyContent="center">
+            </tbody>
 
-                      <Tooltip title="Change Role">
-                        <IconButton
-                          color="primary"
-                          onClick={() => {
-                            setSelectedUser(user);
-                            setNewRole(user.role);
-                            setRoleDialogOpen(true);
-                          }}
-                        >
-                          <AdminPanelSettings />
-                        </IconButton>
-                      </Tooltip>
+          </table>
+        )}
 
-                      <Tooltip title="Delete">
-                        <IconButton
-                          color="error"
-                          onClick={() => handleDeleteUser(user._id)}
-                        >
-                          <Delete />
-                        </IconButton>
-                      </Tooltip>
+      </div>
 
-                    </Stack>
-                  </TableCell>
+      {/* PAGINATION */}
+      <div className="flex justify-center gap-2">
 
-                </TableRow>
-              ))
-            )}
+        {Array.from({ length: totalPages }, (_, i) => (
+          <button
+            key={i}
+            onClick={() => setCurrentPage(i + 1)}
+            className={`px-3 py-1 rounded ${
+              currentPage === i + 1
+                ? "bg-[#878C53] text-white"
+                : "bg-gray-200"
+            }`}
+          >
+            {i + 1}
+          </button>
+        ))}
 
-          </TableBody>
+      </div>
 
-        </Table>
-      </TableContainer>
-
-      {/* Role Dialog */}
-      <Dialog open={roleDialogOpen} onClose={() => setRoleDialogOpen(false)}>
-        <DialogTitle>Change Role</DialogTitle>
-
-        <DialogContent>
-          <Typography>
-            User: <b>{selectedUser?.name}</b>
-          </Typography>
-
-          <FormControl fullWidth sx={{ mt: 2 }}>
-            <InputLabel>Role</InputLabel>
-            <Select
-              value={newRole}
-              label="Role"
-              onChange={(e) => setNewRole(e.target.value)}
-            >
-              <MenuItem value="user">User</MenuItem>
-              <MenuItem value="admin">Admin</MenuItem>
-            </Select>
-          </FormControl>
-        </DialogContent>
-
-        <DialogActions>
-          <Button onClick={() => setRoleDialogOpen(false)}>Cancel</Button>
-          <Button variant="contained" onClick={handleRoleChange}>
-            Save
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-    </Box>
+    </div>
   );
 };
 

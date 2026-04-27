@@ -61,9 +61,6 @@ const Topbar = ({ collapsed, setCollapsed }) => {
             <MenuIcon />
           </IconButton>
 
-          <Typography variant="h6" fontWeight={700}>
-            Admin Dashboard
-          </Typography>
         </Box>
 
         {/* RIGHT */}
